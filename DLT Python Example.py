@@ -4,11 +4,11 @@ import pyspark.sql.types as T
 from pyspark.sql.functions import *
 import pyspark.sql.functions as F
 # Event Hubs configuration
-EH_NAMESPACE                    = "ihsuprodamres032dednamespace"
-EH_NAME                         = "iothub-ehub-iotapohub-25280359-5b5d57ca6f"
+EH_NAMESPACE                    = ""
+EH_NAME                         = ""
 
 EH_CONN_SHARED_ACCESS_KEY_NAME  = "iothubowner"
-EH_CONN_SHARED_ACCESS_KEY_VALUE = "k8u/oOpjyAmEhcbbdzC7PfGrxJvH8a2qgAIoTAEJ2eY="
+EH_CONN_SHARED_ACCESS_KEY_VALUE = ""
 
 EH_CONN_STR                     = f"Endpoint=sb://{EH_NAMESPACE}.servicebus.windows.net/;SharedAccessKeyName={EH_CONN_SHARED_ACCESS_KEY_NAME};SharedAccessKey={EH_CONN_SHARED_ACCESS_KEY_VALUE}"
 # Kafka Consumer configuration
@@ -33,8 +33,8 @@ schema = """messageId string, temperature double, humidity double, windspeed dou
 def BronzeTurbineT():
     return (
         spark.readStream.format("kafka")
-        .options(**EH_OPTIONS)                                                         # Use the Event-Hub-enabled connect string
-        .load()                                                                          # Load the data
+        .options(**EH_OPTIONS)                                                         
+        .load()                                                                         
         .withColumn('body', F.from_json(F.col('value').cast('string'), schema))
         .withColumn('timestamp', F.current_timestamp())
         .select(
@@ -56,7 +56,7 @@ def SilverTurbineT():
         .withColumn("messageID", expr("CAST(messageID AS INT)"))
         .withColumnRenamed("angle", "deviceAngle")
         .withColumnRenamed("rpm", "deviceRPM")
-        .groupBy('messageID',F.window('timestamp','5 seconds'))              # Aggregate readings to hourly intervals
+        .groupBy('messageID',F.window('timestamp','5 seconds'))              
         .agg(F.avg('deviceRPM').alias('AverageRpm'), F.avg("deviceAngle").alias("AverageAngle"))
         .select(
             "messageID",
@@ -71,8 +71,8 @@ def SilverTurbineT():
 def BronzeWeatherT():
     return (
         spark.readStream.format("kafka")
-        .options(**EH_OPTIONS)                                                            # Use the Event-Hub-enabled connect string
-        .load()                                                                          # Load the data
+        .options(**EH_OPTIONS)                                                            
+        .load()                                                                          
         .withColumn('body', F.from_json(F.col('value').cast('string'), schema))
         .withColumn('timestamp', F.current_timestamp())
         .select(
@@ -109,8 +109,8 @@ def SilverWeatherT():
 
 @dlt.table(comment="Gold layer")
 def goldT():
-    silver_one = dlt.read("SilverTurbineT")#.option("skipChangeCommits", True)
-    silver_two = dlt.read("SilverWeatherT")#.option("skipChangeCommits", True)
+    silver_one = dlt.read("SilverTurbineT")
+    silver_two = dlt.read("SilverWeatherT")
     return ( 
      silver_one.join(silver_two, ["messageID"], how="inner")
      .filter(expr("AverageTemperature <> 5"))
